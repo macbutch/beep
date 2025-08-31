@@ -8,6 +8,9 @@ import (
 	"github.com/gopxl/beep/v2"
 )
 
+// SmoothFader handles smoothly starting and stopping playback via quick but
+// gentle fades to avoid popping. The general concept is described here: 
+// https://en.m.wikipedia.org/wiki/Hann_function
 type SmoothFader struct {
 	Streamer beep.Streamer
 
