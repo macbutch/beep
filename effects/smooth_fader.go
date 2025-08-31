@@ -9,7 +9,7 @@ import (
 )
 
 // SmoothFader handles smoothly starting and stopping playback via quick but
-// gentle fades to avoid popping. The general concept is described here: 
+// gentle fades to avoid popping. The general concept is described here:
 // https://en.m.wikipedia.org/wiki/Hann_function
 type SmoothFader struct {
 	Streamer beep.Streamer
@@ -72,6 +72,7 @@ func (s *SmoothFader) Stream(samples [][2]float64) (n int, ok bool) {
 			if s.fadeIndex.Load() >= int32(len(s.hannWindow)) {
 				// we are done with fading in
 				s.fadingIn = false
+				s.fadeIndex.Store(0)
 			}
 		case s.fadingOut.Load():
 			// to fade out, we walk _backwards_ through the window
@@ -93,10 +94,10 @@ func (s *SmoothFader) Stream(samples [][2]float64) (n int, ok bool) {
 	return n, ok
 }
 
-// Stop fades out audio and stops streaming. 
-// Stop can be called from another thread. 
+// Stop fades out audio and stops streaming.
+// Stop can be called from another thread.
 func (s *SmoothFader) Stop() {
-	s.fadeIndex.Store(int32(len(s.hanningWindow) - 1))
+	s.fadeIndex.Store(int32(len(s.hannWindow) - 1))
 	s.fadingOut.Store(true)
 }
 
