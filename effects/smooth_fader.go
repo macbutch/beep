@@ -39,7 +39,7 @@ func NewSmoothFader(streamer beep.Streamer, sr beep.SampleRate) *SmoothFader {
 	N := sr.N(5 * time.Millisecond)
 	s.hannWindow = make([]float64, N)
 	for n := 0; n < len(s.hannWindow); n++ {
-		s.hannEindow[n] = 0.5 * (1 - math.Cos(math.Pi*float64(n)/float64(N-1)))
+		s.hannWindow[n] = 0.5 * (1 - math.Cos(math.Pi*float64(n)/float64(N-1)))
 	}
 
 	return s
