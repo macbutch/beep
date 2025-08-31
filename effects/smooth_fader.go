@@ -22,7 +22,7 @@ type SmoothFader struct {
 	// how many samples we've left to fade
 	fadeIndex atomic.Int32
 
-	hanningWindow []float64
+	hannWindow []float64
 }
 
 func NewSmoothFader(streamer beep.Streamer, sr beep.SampleRate) *SmoothFader {
@@ -31,12 +31,12 @@ func NewSmoothFader(streamer beep.Streamer, sr beep.SampleRate) *SmoothFader {
 		firstStream: true,
 	}
 
-	// pre-calculate _half_ a hanning window: we can step forwards and
-	// backwards (so need to calculate the entire window).
+	// pre-calculate _half_ a hann window: we can step forwards and
+	// backwards (no need to calculate the entire window).
 	N := sr.N(5 * time.Millisecond)
-	s.hanningWindow = make([]float64, N)
-	for n := 0; n < len(s.hanningWindow); n++ {
-		s.hanningWindow[n] = 0.5 * (1 - math.Cos(math.Pi*float64(n)/float64(N-1)))
+	s.hannWindow = make([]float64, N)
+	for n := 0; n < len(s.hannWindow); n++ {
+		s.hannEindow[n] = 0.5 * (1 - math.Cos(math.Pi*float64(n)/float64(N-1)))
 	}
 
 	return s
@@ -52,7 +52,7 @@ func (s *SmoothFader) Stream(samples [][2]float64) (n int, ok bool) {
 
 	// fade in if we are just starting and the first sample is
 	// loud enough to pop!
-	if s.firstStream && (samples[0][0] > 0.01 || samples[0][1] > 0.01) {
+	if s.firstStream && (math.Abs(samples[0][0]) > 0.01 || math.Abs(samples[0][1]) > 0.01) {
 		s.fadeIndex.Store(0)
 		s.fadingIn = true
 	}
@@ -64,16 +64,16 @@ func (s *SmoothFader) Stream(samples [][2]float64) (n int, ok bool) {
 		switch {
 		case s.fadingIn:
 			idx := s.fadeIndex.Load()
-			gain = s.hanningWindow[idx]
+			gain = s.hannWindow[idx]
 			s.fadeIndex.Add(2) // fade in twice as fast as we fade out
-			if s.fadeIndex.Load() >= int32(len(s.hanningWindow)) {
+			if s.fadeIndex.Load() >= int32(len(s.hannWindow)) {
 				// we are done with fading in
 				s.fadingIn = false
 			}
 		case s.fadingOut.Load():
 			// to fade out, we walk _backwards_ through the window
 			idx := s.fadeIndex.Load()
-			gain = s.hanningWindow[idx]
+			gain = s.hannWindow[idx]
 			s.fadeIndex.Add(-1)
 		default:
 			gain = 1
@@ -90,6 +90,8 @@ func (s *SmoothFader) Stream(samples [][2]float64) (n int, ok bool) {
 	return n, ok
 }
 
+// Stop fades out audio and stops streaming. 
+// Stop can be called from another thread. 
 func (s *SmoothFader) Stop() {
 	s.fadeIndex.Store(int32(len(s.hanningWindow) - 1))
 	s.fadingOut.Store(true)
